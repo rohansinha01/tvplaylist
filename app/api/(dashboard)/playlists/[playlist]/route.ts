@@ -127,4 +127,51 @@ export const GET = async (request: Request, context: { params: any }) => {
         status: 500,
       });
     }
-  }
+  };
+
+  export const DELETE = async (request: Request, context: { params: any }) => {
+    const playlistId = context.params.playlist;
+    try {
+      const { searchParams } = new URL(request.url);
+      const userId = searchParams.get("userId");
+  
+      if (!userId || !Types.ObjectId.isValid(userId)) {
+        return new NextResponse(
+          JSON.stringify({ message: "Invalid or missing userId" }),
+          { status: 400 }
+        );
+      }
+  
+      if (!playlistId || !Types.ObjectId.isValid(playlistId)) {
+        return new NextResponse(
+          JSON.stringify({ message: "Invalid or missing playlistId" }),
+          { status: 400 }
+        );
+      }
+  
+      await connect();
+  
+      const user = await User.findById(userId);
+      if (!user) {
+        return new NextResponse(JSON.stringify({ message: "User not found" }), {
+          status: 404,
+        });
+      }
+      const playlist = await Playlist.findOne({ _id: playlistId, user: userId });
+      if (!playlist) {
+        return new NextResponse(JSON.stringify({ message: "Playlist not found" }), {
+          status: 404,
+        });
+      }
+  
+      await Playlist.findByIdAndDelete(playlistId);
+  
+      return new NextResponse(JSON.stringify({ message: "Playlist is deleted" }), {
+        status: 200,
+      });
+    } catch (error: any) {
+      return new NextResponse("Error in deleting playlist" + error.message, {
+        status: 500,
+      });
+    }
+  };
