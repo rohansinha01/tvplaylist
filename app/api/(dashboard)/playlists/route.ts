@@ -11,6 +11,12 @@ export const GET = async (request: Request) => {
         const { searchParams } = new URL(request.url);
         const userId = searchParams.get("userId");
         const categoryId = searchParams.get("categoryId");
+        const searchKeywords = searchParams.get("keywords") as string;
+        const startDate = searchParams.get("startDate");
+        const endDate = searchParams.get("endDate");
+        const page: any = parseInt(searchParams.get("page") || "1");
+        const limit: any = parseInt(searchParams.get("limit") || "10");
+
 
         if (!userId || !Types.ObjectId.isValid(userId)) {
             return new NextResponse(
@@ -46,14 +52,45 @@ export const GET = async (request: Request) => {
             )
         }
 
-        // TODO
+
 
         const filter: any = {
             user: new Types.ObjectId(userId),
             category: new Types.ObjectId(categoryId),
         };
 
-        const playlists = await Playlist.find(filter);
+        if(searchKeywords) {
+            filter.$or = [
+                {
+                    title: { $regex: searchKeywords, $options: "i" },
+                },
+                {
+                    description: { $regex: searchKeywords, $options: "i" },
+                }
+            ]
+        }
+
+        if(startDate && endDate) {
+            filter.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate),
+            };
+            } else if(startDate) {
+                filter.createdAt = {
+                    $gte: new Date(startDate),
+                };
+            }  else if (endDate) {
+                filter.createdAt = {
+                    $lte: new Date(endDate),
+                };
+              }
+            
+            const skip = (page - 1) * limit
+
+        const playlists = await Playlist.find(filter)
+        .sort({ createdAt: "asc" })
+        .skip(skip)
+        .limit(limit);
 
         return new NextResponse(JSON.stringify({ playlists }), {
             status: 200,
